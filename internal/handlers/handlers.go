@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"bufio"
-	"fmt"
-
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -48,13 +46,20 @@ func (h *Handler) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fileNew.Close()
 
-	scanner := bufio.NewScanner(file)
-	var str string
-	for scanner.Scan() {
-		str = str + service.Translator(scanner.Text())
-		fmt.Fprint(fileNew, service.Translator(scanner.Text()))
+	data, err := io.ReadAll(file)
+	if err != nil {
+		h.logger.Printf("Ошибка чтения файла: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	translated := service.Translator(string(data))
+	if _, err := fileNew.Write([]byte(translated)); err != nil {
+		h.logger.Printf("Ошибка записи в файл: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(str))
+	w.Write([]byte(translated))
 }
