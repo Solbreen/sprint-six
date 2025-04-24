@@ -3,10 +3,10 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/Yandex-Practicum/go1fl-sprint6-final/internal/service"
@@ -22,25 +22,6 @@ func NewHandlers(logger *log.Logger) *Handler {
 
 func (h *Handler) MainHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Получаем текущую директорию
-	s, err := os.Getwd()
-	if err != nil {
-		h.logger.Printf("Ошибка получения директории: %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// если текущая дериктория cmd, то поднимаемся выше к html
-	if filepath.Base(s) == "cmd" {
-		err = os.Chdir("..")
-		if err != nil {
-			h.logger.Printf("Ошибка смены директории: %v\n", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// грузим html
 	http.ServeFile(w, r, "index.html")
 }
 
@@ -68,8 +49,12 @@ func (h *Handler) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer fileNew.Close()
 
 	scanner := bufio.NewScanner(file)
-
+	var str string
 	for scanner.Scan() {
+		str = str + service.Translator(scanner.Text())
 		fmt.Fprint(fileNew, service.Translator(scanner.Text()))
 	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(str))
 }
